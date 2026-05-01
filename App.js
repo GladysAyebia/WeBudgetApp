@@ -7,11 +7,18 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Simulate a loading process
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 3000); // 3 seconds delay
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    try {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      setIsLoading(false);
+    }
+  };
 
   return (
     <View style={{ flex: 1 }}>

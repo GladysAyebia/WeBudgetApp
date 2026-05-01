@@ -1,14 +1,31 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet, Alert } from 'react-native';
+import { View, Text, TextInput, Button, StyleSheet, Alert, TouchableOpacity, Platform } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-
+import DateTimePicker from '@react-native-community/datetimepicker';
+import { v4 as uuidv4 } from 'uuid';
 
 const AddExpenseScreen = ({ route, navigation }) => {
   const [amount, setAmount] = useState('');
   const [category, setCategory] = useState('Food');
   const [customCategory, setCustomCategory] = useState('');
+  const [date, setDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const { addExpense } = route.params;
+
+  const onChangeDate = (event, selectedDate) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selectedDate) {
+      setDate(selectedDate);
+    }
+  };
+
+  const formatDate = (date) => {
+    const month = date.getMonth() + 1;
+    const day = date.getDate();
+    const year = date.getFullYear();
+    return `${month}/${day}/${year}`;
+  };
 
   const handleSave = () => {
     if (!amount || isNaN(amount)) {
@@ -21,10 +38,10 @@ const AddExpenseScreen = ({ route, navigation }) => {
       return;
     }
     const expense = {
-      id: Math.random().toString(),
+      id: uuidv4(),
       amount: parseFloat(amount),
       category: selectedCategory,
-      date: new Date().toLocaleDateString(),
+      date: formatDate(date),
     };
     addExpense(expense);
     navigation.goBack();
@@ -59,6 +76,20 @@ const AddExpenseScreen = ({ route, navigation }) => {
           onChangeText={setCustomCategory}
         />
       )}
+      <TouchableOpacity
+        style={styles.dateButton}
+        onPress={() => setShowDatePicker(true)}
+      >
+        <Text style={styles.dateButtonText}>Date: {formatDate(date)}</Text>
+      </TouchableOpacity>
+      {showDatePicker && (
+        <DateTimePicker
+          value={date}
+          mode="date"
+          display="default"
+          onChange={onChangeDate}
+        />
+      )}
       <Button title="Save" onPress={handleSave} />
     </View>
   );
@@ -76,6 +107,18 @@ const styles = StyleSheet.create({
   },
   picker: {
     marginBottom: 16,
+  },
+  dateButton: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    padding: 12,
+    marginBottom: 16,
+    borderRadius: 4,
+    backgroundColor: '#fff',
+  },
+  dateButtonText: {
+    fontSize: 16,
+    color: '#000',
   },
 });
 

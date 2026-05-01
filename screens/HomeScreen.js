@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
+
+const CATEGORY_COLORS = {
+  Food: '#FF6384',
+  Transport: '#36A2EB',
+  Entertainment: '#FFCE56',
+  Utilities: '#4BC0C0',
+  Other: '#9966FF',
+};
 import { View, Image, Text, Button, StyleSheet, TextInput, Alert, ScrollView, RefreshControl } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PieChart } from 'react-native-chart-kit';
 import { Dimensions } from 'react-native';
 import { Picker } from '@react-native-picker/picker';
-
-
-
-
-
 
 const HomeScreen = ({ navigation }) => {
   const [expenses, setExpenses] = useState([]);
@@ -54,6 +57,11 @@ const HomeScreen = ({ navigation }) => {
     if (savedCurrency) setCurrency(savedCurrency);
   };
 
+  const handleCurrencyChange = async (itemValue) => {
+    setCurrency(itemValue);
+    await AsyncStorage.setItem('currency', itemValue);
+  };
+
   const onRefresh = () => {
     setRefreshing(true);
     loadData().then(() => setRefreshing(false));
@@ -63,6 +71,25 @@ const HomeScreen = ({ navigation }) => {
     const newExpenses = [...expenses, expense];
     setExpenses(newExpenses);
     AsyncStorage.setItem('expenses', JSON.stringify(newExpenses));
+  };
+
+  const deleteExpense = (id) => {
+    Alert.alert(
+      'Delete Expense',
+      'Are you sure you want to delete this expense?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            const newExpenses = expenses.filter((expense) => expense.id !== id);
+            setExpenses(newExpenses);
+            AsyncStorage.setItem('expenses', JSON.stringify(newExpenses));
+          },
+        },
+      ]
+    );
   };
 
   const updateBudget = async () => {
@@ -76,16 +103,29 @@ const HomeScreen = ({ navigation }) => {
     setNewBudget('');
   };
 
-  const clearBudget = async () => {
-    setExpenses([]);
-    setBudget(0); // Reset budget to $0
-    setSavingsGoal(0); // Reset savings goal to $0
-    setSavingsProgress(0); // Reset savings progress to $0
-    await AsyncStorage.removeItem('expenses');
-    await AsyncStorage.removeItem('budget');
-    await AsyncStorage.removeItem('savingsGoal');
-    await AsyncStorage.removeItem('savingsProgress');
-    Alert.alert('Budget Cleared', 'Your budget and expenses have been reset.');
+  const clearBudget = () => {
+    Alert.alert(
+      'Clear Budget',
+      'Are you sure you want to clear all budget data, expenses, and savings? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            setExpenses([]);
+            setBudget(0);
+            setSavingsGoal(0);
+            setSavingsProgress(0);
+            await AsyncStorage.removeItem('expenses');
+            await AsyncStorage.removeItem('budget');
+            await AsyncStorage.removeItem('savingsGoal');
+            await AsyncStorage.removeItem('savingsProgress');
+            Alert.alert('Budget Cleared', 'Your budget and expenses have been reset.');
+          },
+        },
+      ]
+    );
   };
 
   const updateSavingsGoal = async () => {
@@ -170,7 +210,7 @@ const HomeScreen = ({ navigation }) => {
   const pieChartData = Object.keys(chartData).map((key) => ({
     name: key,
     amount: chartData[key],
-    color: `#${Math.floor(Math.random() * 16777215).toString(16)}`,
+    color: CATEGORY_COLORS[key] || `#${Math.floor(Math.random() * 16777215).toString(16)}`,
     legendFontColor: '#7F7F7F',
     legendFontSize: 15,
   }));
@@ -188,7 +228,7 @@ const HomeScreen = ({ navigation }) => {
         <Text style={styles.currencyText}>Select Currency:</Text>
         <Picker
           selectedValue={currency}
-          onValueChange={(itemValue) => setCurrency(itemValue)}
+          onValueChange={(itemValue) => handleCurrencyChange(itemValue)}
           style={styles.picker}
           dropdownIconColor="#000"
         >
@@ -285,8 +325,11 @@ const HomeScreen = ({ navigation }) => {
         <ScrollView>
           {expenses.map((item) => (
             <View key={item.id} style={styles.expenseItem}>
-              <Text style={styles.expenseText}>{item.category}: {currencySymbol}{item.amount.toFixed(2)}</Text>
-              <Text style={styles.expenseText}>{item.date}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.expenseText}>{item.category}: {currencySymbol}{item.amount.toFixed(2)}</Text>
+                <Text style={styles.expenseText}>{item.date}</Text>
+              </View>
+              <Button title="Delete" onPress={() => deleteExpense(item.id)} color="red" />
             </View>
           ))}
         </ScrollView>
@@ -356,10 +399,6 @@ const styles = StyleSheet.create({
   },
   expenseText: {
     color: '#000', // Black text
-  },
-  noExpensesText: {
-    marginTop: 20, // Adds space between the image and the text
-    fontSize: 18, // Optional: set the font size for the text
   },
   noExpensesContainer: {
     flex: 1, // Take up full screen
